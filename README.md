@@ -24,5 +24,9 @@ After all. Add mkv_subtitler_crontab script to Synology Scheduler (crontab :P )
 
 See README.txt for more information inside
 
+# Copyrights:
+Portions from:
+https://github.com/dagon666/napi
+
 
 
