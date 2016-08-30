@@ -23,6 +23,8 @@ On other systems read the same file for what is needed and install proper tools 
 After all. Add mkv_subtitler_crontab script to Synology Scheduler (crontab :P ) 
 
 See README.txt for more information inside
+# NOTICE:
+This script is tuned for Polish language - but it can be tuned for any other very quickly inside script.
 
 # Copyrights:
 Portions from:
