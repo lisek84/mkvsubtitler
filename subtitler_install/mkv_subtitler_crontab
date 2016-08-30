@@ -1,0 +1,55 @@
+#!/opt/bin/bash
+# (c) lisek
+#######################################################################################
+# Czesc konfiguracyjna:
+#######################################################################################
+# Tutaj podaj katalog w ktorym beda trzymane pliki do przerobienia. Lub zostaw domyslny.
+subtitlerdir="/volume1/video/Subtitler"
+
+# Tutaj podaj gdzie beda zapisywane informacje logowania:
+subtitlerlog="$subtitlerdir/Napisy_log.txt"
+
+# Czy chcesz aby po poprawnym zakonczeniu konwersji pliki byly przenoszone do innego katalogu?
+# 1 - tak # 0 - nie # - Domyslnie tak
+shouldimovefile=1
+
+# Jesli przenosze plik to gdzie go mam przeniesc?
+# Domyslna lokalizacja to katalog video
+defaultvideolocation="/volume1/video"
+
+########################################################################################
+
+
+# Sprawdzam czy nie jestem juz uruchomiony.
+if [ -e /tmp/mkv_subtitler_blockfile ] ;
+    then
+    	echo "Wykrylem, ze moja poprzednia sesja dziala - przerywam" >>$subtitlerlog
+    		exit;
+             else
+       		touch /tmp/mkv_subtitler_blockfile
+  		fi
+  		
+  		
+
+cd $subtitlerdir
+
+# Usuwanie spacji z nazw plikow
+
+for file in *; do mv "$file" `echo $file | sed -e 's/  */_/g' -e 's/_-_/-/g'`; done 1>/dev/null 2>&1 ;
+
+# Uruchamianie subtitlera dla kazdego pliku z osobna
+
+
+for moviefile in `find $subtitlerdir 2>/dev/null | grep .mkv | grep -v "_napisy"`; do echo "Znalazlem film $moviefile" probuje dopasowac napisy - zaczynam o `date` >>$subtitlerlog; /usr/bin/mkv_subtitler $moviefile >>$subtitlerlog 2>&1; done
+
+if [ "$shouldimovefile" == "1" ]; then 
+	 echo "Przenosze przygotowane pliki do $defaultvideolocation" >>$subtitlerlog
+	 for movefile in `find $subtitlerdir 2>/dev/null | grep .mkv | grep "_napisy"`; do mv $movefile $defaultvideolocation >>$subtitlerlog; synoindex -a $defaultvideolocation/`basename $movefile` >>$subtitlerlog; done
+	 
+
+	 else 
+	 	echo "Zostawiam pliki w katalogu zrodlowym, przesun je do swojego katalogu video aby urzadzenia zgodne z DLNA je mogly zobaczyc >>$subtitlerlog" 
+	 fi
+
+rm -f /tmp/mkv_subtitler_blockfile
+

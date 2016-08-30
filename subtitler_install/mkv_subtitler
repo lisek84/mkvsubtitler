@@ -1,0 +1,85 @@
+#!/opt/bin/bash
+# Skrypt by lisek84/pronas.pl - Jesli uzywasz innego linuxa niz DSM Synology, to zmien powyzsza linie na #!/bin/bash
+
+if [ "$#" -lt '1' ]; then
+ echo -e " \033[38;5;148mTen skrypt doda napisy SRT/TXT do filmu podanego jako parametr tego polecenia\033[39m "
+  echo -e " \033[38;5;148mPodaj nazwe pliku z filmem \033[39m "
+   echo -e " Uruchamianie $0 nazwa_pliku.mkv"
+    exit 1
+    fi
+
+
+PATH=/opt/bin:$PATH
+export PATH
+
+echo Analizuje sytuacje:
+DIR=$(dirname ${1})
+eval cd $DIR
+INPUT=$(basename $1 .mkv)
+echo Szukam napisow dla filmu $INPUT zlokalizowanego w $DIR
+
+TXTfile=$(ls | grep $INPUT.txt)
+if [ "$TXTfile" != "" ]; then
+	echo Znalazlem napisy w pliku $INPUT.txt - konwertuje je do SRT
+	framerate=`/usr/local/bin/mplayer $1 -identify -vo null -ao null -frames 0 \"{}\" 2> /dev/null | grep ID_VIDEO_FPS | cut -d '=' -f 2`
+		if [[ "$framerate" != "" ]]; then
+		echo "FPS okreslony na podstawie pliku wideo: $framerate"
+		subparam="-fi $framerate"
+	    else
+	        echo "Nie udalo sie okreslic Fps. Okreslam na podstawie pliku napisow lub przyjmuje dom. wart."
+     		subparam=""
+    		 fi
+
+     		/usr/bin/subotage.sh -i "$INPUT.txt" -of subrip -o "$INPUT.srt" $subparam
+     		[[ $? -eq 0 ]] &&  rm -f "$INPUT.txt"
+	else
+		echo "Nie znalazlem napisow w txt szukam w srt"
+		
+	
+fi
+     		
+	
+	
+
+SRT=$(ls | grep $INPUT.srt)
+if [ "$SRT" != "" ]; then
+
+ echo Znalazlem napisy w pliku $INPUT.srt
+ echo Sprawdzam ich strone kodowa i konwertuje je do UTF-8
+ srtcharset=`enca -g -L polish -i $INPUT.srt`
+ echo Wykrylem $srtcharset
+ /opt/bin/iconv -f $srtcharset -t UTF-8 < $INPUT.srt > ${INPUT}_utf8.srt
+ echo Konwertuje plik video.
+ export LC_ALL=C
+ /opt/bin/mkvmerge -o ${INPUT}_napisy.mkv $1 --language "0:pol" --track-name "0:Polski" --sub-charset 0:UTF8 -s 0 -D -A ${INPUT}_utf8.srt
+
+if [ -e ${INPUT}_napisy.mkv ] ;
+    then
+            echo "Plik z napisami powstal, kasuje pliki zrodlowe"
+             rm -f $1 ${INPUT}_utf8.srt $INPUT.srt
+            fi
+                                                                         
+
+        else
+                echo Pobieram napisy z napiprojekt.pl
+                /usr/bin/napi.sh -e srt -s -f subrip $1 2>&1 || { echo "Nie udalo sie pobrac napisow, przerywam" ; exit 1; }
+		 SRT=$(ls | grep $INPUT.srt)
+		 if [ "$SRT" != "" ]; then
+		 echo Znalazlem napisy w pliku $INPUT.srt
+		 echo Sprawdzam ich strone kodowa i konwertuje je do UTF-8
+		 srtcharset=`enca -g -L polish -i $INPUT.srt`
+		 echo Wykrylem $srtcharset
+		 /opt/bin/iconv -f $srtcharset -t UTF-8 < $INPUT.srt > ${INPUT}_utf8.srt
+		 echo Konwertuje plik video.
+		 export LC_ALL=C
+		 /opt/bin/mkvmerge -o ${INPUT}_napisy.mkv $1 --language "0:pol" --track-name "0:Polski" --sub-charset 0:UTF8 -s 0 -D -A ${INPUT}_utf8.srt
+		 if [ -e ${INPUT}_napisy.mkv ] ;
+		     then
+		                 echo "Plik z napisami powstal, kasuje pliki zrodlowe"
+		                              rm -f $1 ${INPUT}_utf8.srt $INPUT.srt
+		                                          fi
+		                                          
+                        else
+                         echo "Nie udalo sie wyszukac napisow dla filmu $INPUT. Bede probowac do skutku."                                                                        
+                fi
+        fi

@@ -1,0 +1,107 @@
+#!/bin/sh
+echo Instaluje subtitlera dla synology.
+echo Sprawdzam czy odpalaja sie potrzebne mi programy.
+echo
+echo Bede na bierzaco wypisywac co robie w twoim systemie.
+echo
+
+PATH=/opt/bin:$PATH
+export PATH
+
+
+echo
+echo Szukam ipkg
+if ipkg update ; then echo "Znalazlem ipkg - kontynuuje"; else
+                                                        echo "Nie masz ipkg - na tym etapie nie ma sensu dalej kontynuowac"
+                                                        echo "Jesli masz ipkg a nie udalo sie go wykryc - zapewne lokalizacja w ktorym sie znajduje nie znajduje sie w tych ze zmiennej PATH."
+                                                        echo "Dopisz do zmiennej PATH jego lokalizacje, lub zainstaluj go"
+                                                        echo "Dokladny opis jak skonfigurowac ipkg dla swojego synology znajdziesz na forum pronas.pl:"
+                                                        echo "Potrzebujesz skonfigurowac bootstrap"
+                                                        echo "http://pronas.pl/instalacja-synku-t2008.html"
+                                                        exit 1
+                                                        fi
+
+echo Szukam Basha
+if bash --version >/dev/null ; then echo "Znalazlem bash - kontynuuje"; 
+						else
+                                                echo "Nie znalazlem bash - Probuje instalowac"
+                                                ipkg install bash || { echo "Nie udalo sie zainstalowac basha - Skrypty moga nie dzialac prawidlowo"; }
+                                                fi
+                                                                                                                                                
+echo Szukam md5sum
+if md5sum --version >/dev/null ; then echo "Znalazlem md5sum - kontynuuje"; else
+                                                echo "Nie znalazlem md5sum - Probuje instalowac"
+                                                ipkg install coreutils || { echo "Nie udalo sie zainstalowac coreutils w ktorym jest md5sum - Skrypty moga nie dzialac prawidlowo"; }
+                                                fi
+
+echo Szukam iconv                                                                                                                                                                                                                                                               
+if [ -e /opt/bin/iconv ] ; then echo "Znalazlem iconv - kontynuuje"; else
+						echo "Nie znalazlem iconv - Probuje instalowac"
+						ipkg install gconv-modules || { echo "Nie udalo sie zainstalowac iconv - Bez niego nie rusze, wiec sie poddaje"; }
+						fi
+
+echo Szukam mplayer - Jest potrzebny do rozpoznawania jaki framerate ma film - aby napiprojekt mogl konwertowac napisy. Bez niego tez zadziala w razie czego.
+
+if mplayer >/dev/null ; then echo "Znalazlem mplayer - kontynuuje"; else 
+							echo "Szukam mplayera w katalogu AudioStation"
+							if [ -e /volume1/@appstore/AudioStation/bin/mplayer ] ;
+							    then
+							    		echo "Znalazlem mplayer"
+							    		ln -s /volume1/@appstore/AudioStation/bin/mplayer /usr/local/bin/mplayer
+							    				    else
+							    				    		echo "Nie masz mplayer'a - Zainstaluj AudioStation i sproboj ponownie"
+							    				    		exit 1
+							    				    fi
+							    fi
+							    				    		
+echo "Szukam awk - korzysta z niego jeden ze skryptow napiprojekt"
+
+if awk '{print $1}' $0 >/dev/null ; then echo "Znalazlem awk - kontynuuje"; 
+						else 
+						echo "Nie znalazlem awk - Probuje zainstalowac";
+						ipkg install gawk || { echo "Nie udalo sie zainstalowac gawk/awk - Tworzenie plikow srt przez napiprojekt moze nie dzialac prawidlowo. Mozesz go zainstalowac recznie pozniej"; }
+						fi
+						
+echo Szukam mkvmerge - Elementu niezbednego do wpisania napisow do pliku mkv.
+
+if mkvmerge -V >/dev/null ; then echo "Znalazlem mkvmerge - kontynuuje"; else
+                                                echo "Nie znalazlem mkvmerge - Probuje zainstalowac"
+                                                ipkg install mkvtoolnix || { echo "Nie udalo sie zainstalowac mkvtoolnix - Tworzenie plikow MKV z napisami nie bedzie dzialac prawidlowo. Mozesz go zainstalowacznie i uruchomic ponownie instalator" ; exit 1; }
+                                                fi
+                                                                                                                                                
+if bzip2 --help >/dev/null ; then echo "Znalazlem bzip2 - kontynuuje";
+                                                else
+                                               echo "Nie znalazlem bzip2 - Probuje zainstalowac";
+                                               ipkg install bzip2 || { echo "Nie udalo sie zainstalowac bzip2 - mkvmerge go wymaga, nie ma sensu kontynuowac. Sorry, musisz go zainstalowac recznie"; exit 1; }
+                                               fi
+
+if [ -e /opt/lib/libboost_filesystem.so ] ; then echo "Znalazlem boost-filesystem - kontynuuje"; else
+                                               echo "Nie znalazlem boost-filesystem - Probuje instalowac"
+                                               ipkg install boost-filesystem || { echo "Nie udalo sie zainstalowac boost - Bez niego nie rusze, wiec sie poddaje"; }
+                                               fi
+
+if [ -e /opt/lib/libboost_system.so ] ; then echo "Znalazlem boost-system - kontynuuje"; else
+                                              echo "Nie znalazlem boost-system - Probuje instalowac"
+                                              ipkg install boost-system || { echo "Nie udalo sie zainstalowac boost - Bez niego nie rusze, wiec sie poddaje"; }
+                                              fi
+
+echo "Wyglada na to, ze wszystko co potrzebne masz zainstalowane"
+echo
+mkdir -p ~/subtitler
+cp * ~/subtitler
+cd ~/subtitler
+chmod +x *
+chmod -x README.txt
+ln -s /opt/bin/bash /bin/bash
+ln -s /volume1/@optware/lib/libvorbisenc.so.2 /usr/lib/libvorbisenc.so.2
+ln -s /volume1/@optware/lib/libvorbis.so.0 /usr/lib/libvorbis.so.0
+ln -s /volume1/@optware/lib/libogg.so.0 /usr/lib/libogg.so.0
+ln -s /volume1/@optware/lib/libx264.so.128 /usr/lib/libx264.so.128
+ln -s ~/subtitler/napi.sh /usr/bin/napi.sh
+ln -s ~/subtitler/subotage.sh /usr/bin/subotage.sh
+ln -s ~/subtitler/mkv_subtitler /usr/bin/mkv_subtitler
+mkdir -p /volume1/video/Subtitler
+echo "Gotowe - teraz dodaj do Harmonogramu wykonywanie pliku ~/subtitler/mkv_subtitler_crontab"
+echo "Domyslnie skrypt szuka filmow w /volume1/video/Subtitler - jesli chcesz go zmienic - w pliku podanym wyzej znajdziesz do tego odpowiedni parametr"
+
+
